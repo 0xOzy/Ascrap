@@ -1,10 +1,13 @@
 import {
   ScrapeOptionsSchema,
+  type ResolvedScrapeOptions,
   type ScrapeOptions,
   type ScrapeResult,
 } from "@ascrap/schema";
+import { fetchWithBrowser, looksJsGated } from "./browser.js";
+import { ScrapeCache, isFresh } from "./cache.js";
 import { AscrapError } from "./errors.js";
-import { extractFromHtml } from "./extract.js";
+import { extractFromHtml, extractLinks } from "./extract.js";
 import { applyFit } from "./fit.js";
 import { checkRobots } from "./robots.js";
 import { countTokens } from "./tokens.js";
@@ -13,7 +16,7 @@ import { countTokens } from "./tokens.js";
 const DEFAULT_FIT_BUDGET = 4_000;
 
 /** Literal private / loopback / link-local hosts are never fetched (SSRF guard). */
-function assertPublicUrl(url: URL): void {
+export function assertPublicUrl(url: URL): void {
   if (url.protocol !== "http:" && url.protocol !== "https:") {
     throw new AscrapError(
       "invalid_url",
@@ -50,21 +53,27 @@ function truncateToTokens(
   return { text: text || markdown.slice(0, maxTokens * 4), truncated: true };
 }
 
+export interface ScrapePage {
+  result: ScrapeResult;
+  /** Absolute links found in the fetched document (empty for cache hits). */
+  links: string[];
+}
+
 /**
  * Scrape one URL into clean, token-reported Markdown.
  *
- * Implements Tier 1 (HTTP fetch) + Tier 2 (Readability extraction) of the
- * blueprint's tiered waterfall, plus Week 2's query-focused `fit` pruning.
- * The browser tiers land in Week 3; a page that needs JavaScript today
- * fails with `empty_content` or `blocked`, reported honestly rather than
- * escalated silently.
+ * The tiered waterfall (blueprint §8): Tier 0 JSON-LD when a page embeds a
+ * full article body, Tier 1 HTTP fetch, Tier 2 Readability extraction,
+ * Tier 3 headless-browser rendering only when the result looks
+ * JavaScript-gated. Results can be cached in SQLite with ETag
+ * revalidation. Blocked pages are reported, never escalated silently.
  */
-export async function scrape(
+export async function scrapePage(
   rawUrl: string,
   options: ScrapeOptions = {},
-): Promise<ScrapeResult> {
+): Promise<ScrapePage> {
   const started = performance.now();
-  const opts = ScrapeOptionsSchema.parse(options);
+  const opts: ResolvedScrapeOptions = ScrapeOptionsSchema.parse(options);
 
   let url: URL;
   try {
@@ -73,112 +82,189 @@ export async function scrape(
     throw new AscrapError("invalid_url", `Not a valid URL: ${rawUrl}`);
   }
   assertPublicUrl(url);
+  const cacheKey = url.toString();
 
-  // Polite by default: robots.txt is checked unless the user explicitly opts out.
-  let robots: ScrapeResult["provenance"]["robots"] = "skipped";
-  if (opts.respectRobots) {
-    const decision = await checkRobots(url, opts.userAgent, opts.timeoutMs);
-    robots = decision;
-    if (decision === "disallowed") {
+  const cache = opts.cachePath ? new ScrapeCache(opts.cachePath) : null;
+  try {
+    const cached = cache?.get(cacheKey) ?? null;
+    if (cached && isFresh(cached, opts.maxAgeSeconds)) {
+      // A fresh cache hit makes no origin request at all — the politest tier.
+      return {
+        result: {
+          ...cached.result,
+          meta: {
+            ...cached.result.meta,
+            cached: true,
+            ms: Math.round(performance.now() - started),
+          },
+        },
+        links: [],
+      };
+    }
+
+    // Polite by default: robots.txt is checked unless the user explicitly opts out.
+    let robots: ScrapeResult["provenance"]["robots"] = "skipped";
+    if (opts.respectRobots) {
+      const decision = await checkRobots(url, opts.userAgent, opts.timeoutMs);
+      robots = decision;
+      if (decision === "disallowed") {
+        throw new AscrapError(
+          "robots_disallowed",
+          `robots.txt disallows scraping ${url.toString()} for ${opts.userAgent}`,
+        );
+      }
+    }
+
+    const headers: Record<string, string> = {
+      "user-agent": opts.userAgent,
+      accept: "text/html,application/xhtml+xml",
+    };
+    if (cached?.etag) headers["if-none-match"] = cached.etag;
+
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        headers,
+        redirect: "follow",
+        signal: AbortSignal.timeout(opts.timeoutMs),
+      });
+    } catch (cause) {
       throw new AscrapError(
-        "robots_disallowed",
-        `robots.txt disallows scraping ${url.toString()} for ${opts.userAgent}`,
+        "fetch_failed",
+        `Fetch failed for ${url.toString()}: ${(cause as Error).message}`,
       );
     }
-  }
 
-  let res: Response;
-  try {
-    res = await fetch(url, {
-      headers: {
-        "user-agent": opts.userAgent,
-        accept: "text/html,application/xhtml+xml",
-      },
-      redirect: "follow",
-      signal: AbortSignal.timeout(opts.timeoutMs),
-    });
-  } catch (cause) {
-    throw new AscrapError(
-      "fetch_failed",
-      `Fetch failed for ${url.toString()}: ${(cause as Error).message}`,
-    );
-  }
+    if (res.status === 304 && cached) {
+      cache?.touch(cacheKey);
+      return {
+        result: {
+          ...cached.result,
+          meta: {
+            ...cached.result.meta,
+            cached: true,
+            ms: Math.round(performance.now() - started),
+          },
+        },
+        links: [],
+      };
+    }
+    if (res.status === 404 || res.status === 410) {
+      throw new AscrapError("not_found", `HTTP ${res.status} for ${url.toString()}`);
+    }
+    if (res.status === 401 || res.status === 403) {
+      throw new AscrapError(
+        "blocked",
+        `HTTP ${res.status} for ${url.toString()} — the origin refused this client. Ascrap reports this instead of escalating silently (see ETHICS.md).`,
+      );
+    }
+    if (!res.ok) {
+      throw new AscrapError(
+        "fetch_failed",
+        `HTTP ${res.status} for ${url.toString()}`,
+      );
+    }
 
-  if (res.status === 404 || res.status === 410) {
-    throw new AscrapError("not_found", `HTTP ${res.status} for ${url.toString()}`);
-  }
-  if (res.status === 401 || res.status === 403) {
-    throw new AscrapError(
-      "blocked",
-      `HTTP ${res.status} for ${url.toString()} — the origin refused this client. Ascrap reports this instead of escalating silently (see ETHICS.md).`,
-    );
-  }
-  if (!res.ok) {
-    throw new AscrapError(
-      "fetch_failed",
-      `HTTP ${res.status} for ${url.toString()}`,
-    );
-  }
+    const contentType = res.headers.get("content-type") ?? "";
+    if (!/text\/html|application\/xhtml\+xml/.test(contentType)) {
+      throw new AscrapError(
+        "unsupported_content_type",
+        `Expected HTML, got "${contentType}" for ${url.toString()}`,
+      );
+    }
 
-  const contentType = res.headers.get("content-type") ?? "";
-  if (!/text\/html|application\/xhtml\+xml/.test(contentType)) {
-    throw new AscrapError(
-      "unsupported_content_type",
-      `Expected HTML, got "${contentType}" for ${url.toString()}`,
-    );
-  }
+    let html = await res.text();
+    let finalUrl = res.url || url.toString();
+    let status = res.status;
+    let tier = 1;
+    let extraction = extractFromHtml(html, finalUrl);
 
-  const html = await res.text();
-  const tokensRawHtml = countTokens(html);
+    // Tier 3: render in a browser only when the static result looks JS-gated.
+    if (opts.browserFallback && looksJsGated(html, extraction.markdown)) {
+      try {
+        const rendered = await fetchWithBrowser(
+          finalUrl,
+          opts.userAgent,
+          Math.max(opts.timeoutMs, 30_000),
+        );
+        const renderedExtraction = extractFromHtml(rendered.html, rendered.finalUrl);
+        if (renderedExtraction.markdown.trim().length > extraction.markdown.trim().length) {
+          html = rendered.html;
+          finalUrl = rendered.finalUrl;
+          status = rendered.status;
+          extraction = renderedExtraction;
+          tier = 3;
+        }
+      } catch (err) {
+        // If the static extraction is empty, the browser was the only hope.
+        if (!extraction.markdown.trim()) throw err;
+        // Otherwise keep the static result — a thin page beats a failure.
+      }
+    }
 
-  const extraction = extractFromHtml(html, res.url || url.toString());
-  if (!extraction.markdown) {
-    throw new AscrapError(
-      "empty_content",
-      `No readable content extracted from ${url.toString()} — the page may need JavaScript rendering (browser tiers land in Week 3).`,
-    );
-  }
+    if (!extraction.markdown.trim()) {
+      throw new AscrapError(
+        "empty_content",
+        `No readable content extracted from ${url.toString()} — the page may need JavaScript rendering (enable the Tier 3 browser fallback and install Playwright).`,
+      );
+    }
+    if (tier === 1 && extraction.extractorUsed === "json-ld") tier = 0;
 
-  let markdown = extraction.markdown;
-  let truncated = false;
-  let fitApplied = false;
-  if (opts.fit && opts.query) {
-    const fitted = applyFit(markdown, opts.query, opts.maxTokens ?? DEFAULT_FIT_BUDGET);
-    markdown = fitted.markdown;
-    fitApplied = true;
-    truncated = fitted.pruned;
-  } else if (opts.maxTokens !== undefined) {
-    const capped = truncateToTokens(markdown, opts.maxTokens);
-    markdown = capped.text;
-    truncated = capped.truncated;
-  }
+    const tokensRawHtml = countTokens(html);
+    const links = extractLinks(html, finalUrl);
 
-  const tokens = countTokens(markdown);
-  const finalUrl = res.url || url.toString();
+    let markdown = extraction.markdown;
+    let truncated = false;
+    let fitApplied = false;
+    if (opts.fit && opts.query) {
+      const fitted = applyFit(markdown, opts.query, opts.maxTokens ?? DEFAULT_FIT_BUDGET);
+      markdown = fitted.markdown;
+      fitApplied = true;
+      truncated = fitted.pruned;
+    } else if (opts.maxTokens !== undefined) {
+      const capped = truncateToTokens(markdown, opts.maxTokens);
+      markdown = capped.text;
+      truncated = capped.truncated;
+    }
 
-  return {
-    url: url.toString(),
-    finalUrl,
-    status: res.status,
-    title: extraction.title,
-    markdown,
-    meta: {
-      tokens,
-      tokensRawHtml,
-      tokensSavedVsHtml: tokensRawHtml - tokens,
-      tier: 1,
-      extractorUsed: extraction.extractorUsed,
-      ms: Math.round(performance.now() - started),
-      cached: false,
-      truncated,
-      fitApplied,
-    },
-    provenance: {
+    const tokens = countTokens(markdown);
+    const result: ScrapeResult = {
       url: url.toString(),
       finalUrl,
-      status: res.status,
-      fetchedAt: new Date().toISOString(),
-      robots,
-    },
-  };
+      status,
+      title: extraction.title,
+      markdown,
+      meta: {
+        tokens,
+        tokensRawHtml,
+        tokensSavedVsHtml: tokensRawHtml - tokens,
+        tier,
+        extractorUsed: extraction.extractorUsed,
+        ms: Math.round(performance.now() - started),
+        cached: false,
+        truncated,
+        fitApplied,
+      },
+      provenance: {
+        url: url.toString(),
+        finalUrl,
+        status,
+        fetchedAt: new Date().toISOString(),
+        robots,
+      },
+    };
+
+    cache?.set(cacheKey, result, res.headers.get("etag"));
+    return { result, links };
+  } finally {
+    cache?.close();
+  }
+}
+
+/** Scrape one URL. For link discovery (crawl), use `scrapePage`. */
+export async function scrape(
+  rawUrl: string,
+  options: ScrapeOptions = {},
+): Promise<ScrapeResult> {
+  return (await scrapePage(rawUrl, options)).result;
 }

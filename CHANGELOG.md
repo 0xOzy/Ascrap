@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Week 3 (browser fallback, crawl, cache)
+
+- Tier 0 (light): a full article body embedded in JSON-LD is preferred over DOM scraping (`extractorUsed: "json-ld"`, `meta.tier: 0`)
+- Tier 3 browser fallback: conservative JS-gating detection (empty/thin extraction, SPA mount points, "needs JavaScript" notices) triggers headless Chromium rendering via Playwright — an optional dependency, imported lazily so the core stays light; without it, JS-gated pages fail with an actionable `needs_browser` error
+- `crawl()`: breadth-first, same-origin crawl with `maxPages` / `maxDepth`, per-page failures collected as structured errors; CLI `ascrap crawl <url> --out <dir>` writes one Markdown file per page plus `crawl-summary.json`
+- SQLite cache (`node:sqlite`, zero dependencies): `cachePath` + `maxAgeSeconds` options, fresh hits make no origin request and report `meta.cached`, stale entries revalidate with ETag / `If-None-Match`
+- CLI `scrape` gains `--cache <file>` and `--no-browser`
+- 16 new tests (JS-gating detection incl. link-dominated shells, proxy-from-env, cache, crawl helpers, JSON-LD) — 42 passing in total
+
 ### Added — Week 2 (fit mode & Indonesian locale utilities)
 
 - `fit` mode: deterministic query-focused pruning of extracted Markdown — blocks scored by query-term hits (heading hits weigh 3×), title block and section headings always kept for context, token budget respected (`scrape(url, { fit: true, query, maxTokens })`, CLI `--fit --query`); result meta now reports `fitApplied`
@@ -24,11 +33,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Planned — v1.0.0
 
-- Tiered fetching, remaining tiers: Tier 0 (site APIs / JSON-LD / sitemap) and Tier 3 (Playwright fallback); TLS impersonation
+- Tiered fetching, remaining work: Tier 0 site APIs / RSS / sitemap inputs and TLS impersonation (JSON-LD and the Tier 3 Playwright fallback landed in Week 3)
 - Structured extraction with Zod schemas (LLM rung, provider-agnostic, including local models via Ollama)
 - MCP server with 5 tools: `scrape`, `extract`, `crawl`, `map`, `watch`
-- CLI: `crawl`, `extract`, `eval` commands (`scrape` landed in the Week 1 scaffold)
-- SQLite content cache with `maxAge` / ETag support
+- CLI: `extract`, `eval` commands (`scrape` landed in Week 1, `crawl` in Week 3)
 - 50-site evaluation harness with reproducible benchmark reporting
 - Indonesian recipe pack (3 recipes) — the built-in IDR and Bahasa Indonesia date parsers landed in Week 2
 - One-command Docker run with the complete core feature set

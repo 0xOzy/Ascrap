@@ -37,6 +37,15 @@ export const ScrapeOptionsSchema = z.object({
   respectRobots: z.boolean().default(true),
   /** Per-request timeout in milliseconds. */
   timeoutMs: z.number().int().positive().default(15_000),
+  /**
+   * Fall back to a headless browser (Tier 3) when the HTTP result looks
+   * JavaScript-gated (Week 3). Requires the optional Playwright browser.
+   */
+  browserFallback: z.boolean().default(true),
+  /** Path to the SQLite cache file. When set, results are cached (Week 3). */
+  cachePath: z.string().min(1).optional(),
+  /** How long a cached result stays fresh, in seconds. */
+  maxAgeSeconds: z.number().int().nonnegative().default(3_600),
   /** User-Agent identity sent to origins. Ascrap identifies itself honestly. */
   userAgent: z
     .string()
@@ -56,7 +65,7 @@ export const ScrapeMetaSchema = z.object({
   /** Fetch tier that served this result (1 = HTTP, see blueprint Tier 0–5). */
   tier: z.number().int().min(0).max(5),
   /** Extractor that produced the Markdown. */
-  extractorUsed: z.enum(["readability", "fallback-body"]),
+  extractorUsed: z.enum(["json-ld", "readability", "fallback-body"]),
   /** Wall-clock time for the whole scrape, in milliseconds. */
   ms: z.number().nonnegative(),
   /** Whether this result came from cache (cache lands in Week 3). */
@@ -96,3 +105,31 @@ export const ScrapeResultSchema = z.object({
   provenance: ProvenanceSchema,
 });
 export type ScrapeResult = z.infer<typeof ScrapeResultSchema>;
+
+/** Options accepted by `crawl()`. */
+export const CrawlOptionsSchema = ScrapeOptionsSchema.extend({
+  /** Maximum number of pages to fetch. */
+  maxPages: z.number().int().positive().default(50),
+  /** Maximum link depth from the start URL. */
+  maxDepth: z.number().int().nonnegative().default(2),
+});
+export type CrawlOptions = z.input<typeof CrawlOptionsSchema>;
+export type ResolvedCrawlOptions = z.output<typeof CrawlOptionsSchema>;
+
+/** A page that failed during a crawl — collected, never thrown. */
+export const CrawlPageErrorSchema = z.object({
+  url: z.string(),
+  code: AscrapErrorCodeSchema,
+  message: z.string(),
+});
+export type CrawlPageError = z.infer<typeof CrawlPageErrorSchema>;
+
+/** The result of a `crawl()` run. */
+export const CrawlResultSchema = z.object({
+  startUrl: z.string().url(),
+  pages: z.array(ScrapeResultSchema),
+  errors: z.array(CrawlPageErrorSchema),
+  /** Wall-clock time for the whole crawl, in milliseconds. */
+  ms: z.number().nonnegative(),
+});
+export type CrawlResult = z.infer<typeof CrawlResultSchema>;
