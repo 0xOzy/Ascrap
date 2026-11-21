@@ -1,0 +1,1 @@
+{"author":"0xOzy","bin":{"ascrap":"dist/index.js"},"dependencies":{"@ascrap/core":"*","@ascrap/schema":"*","commander":"^13.1.0"},"description":"Ascrap CLI — scrape, crawl, extract, mcp, eval from your terminal.","files":["dist"],"license":"Apache-2.0","name":"ascrap","scripts":{"build":"tsc -b"},"type":"module","version":"0.1.0"}

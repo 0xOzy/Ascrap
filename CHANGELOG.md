@@ -7,13 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Week 1 scaffold (v1 implementation started)
+
+- TypeScript monorepo (npm workspaces + project references): `@ascrap/schema`, `@ascrap/core`, `ascrap` (CLI), `@ascrap/mcp` (placeholder, Week 5) — see `docs/adr/ADR-008-npm-workspaces.md`
+- `@ascrap/schema`: Zod schemas as the single source of truth — scrape options, result, token meta, provenance, structured error codes
+- `@ascrap/core`: Tier 1 HTTP fetch with robots.txt check (polite by default), SSRF guard for private/loopback hosts, Tier 2 Readability extraction to clean Markdown, cl100k_base token counting with per-result reporting, structured `AscrapError` codes (`blocked`, `not_found`, `robots_disallowed`, `ssrf_blocked`, …)
+- CLI: `ascrap scrape <url>` with `--max-tokens`, `--out`, `--json`, `--no-robots`
+- Test suite: golden-fixture extraction tests, token counter tests, result-schema contract tests (10 tests)
+
 ### Planned — v1.0.0
 
-- Tiered fetching (Tier 0–3): site APIs / JSON-LD / sitemap, HTTP with TLS impersonation, Readability-class extraction, Playwright fallback
-- Markdown and `fit` (query-focused) output with per-result token reporting
+- Tiered fetching, remaining tiers: Tier 0 (site APIs / JSON-LD / sitemap) and Tier 3 (Playwright fallback); TLS impersonation
+- `fit` (query-focused) output mode
 - Structured extraction with Zod schemas (LLM rung, provider-agnostic, including local models via Ollama)
 - MCP server with 5 tools: `scrape`, `extract`, `crawl`, `map`, `watch`
-- CLI: `scrape`, `crawl`, `extract`, `mcp`, `eval`
+- CLI: `crawl`, `extract`, `eval` commands (`scrape` landed in the Week 1 scaffold)
 - SQLite content cache with `maxAge` / ETag support
 - 50-site evaluation harness with reproducible benchmark reporting
 - Indonesian recipe pack (3 recipes) with built-in IDR and Bahasa Indonesia date parsers

@@ -7,7 +7,7 @@
 **MCP-native, TypeScript-first web scraping framework for AI agents — clean, token-efficient Markdown and schema-valid JSON from any URL. Local-first. No API key required.**
 
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
-[![Status: Blueprint](https://img.shields.io/badge/Status-Blueprint%20%2F%20Pre--v1-orange.svg)](./docs/BLUEPRINT.md)
+[![Status: v1 in progress](https://img.shields.io/badge/Status-v1%20In%20Progress-orange.svg)](./docs/BLUEPRINT.md)
 [![MCP Native](https://img.shields.io/badge/MCP-Native-purple.svg)](#-mcp-server)
 [![TypeScript First](https://img.shields.io/badge/TypeScript-First-3178C6.svg)](#-planned-usage-v1)
 
@@ -61,7 +61,7 @@ Raw HTML for a typical article is ~17k tokens. A reader brings that to ~4.7–5.
 
 ## Planned usage (v1)
 
-> **Status:** Ascrap is currently at the **blueprint stage** — the design in [`docs/BLUEPRINT.md`](./docs/BLUEPRINT.md) is complete and implementation (v1) is next. The API below is the v1 design target, not yet published to npm.
+> **Status:** v1 implementation is **in progress — the Week 1 scaffold has landed**: the monorepo, the Zod schema package, Tier 1 fetching + Readability extraction, and the `ascrap scrape` CLI below all run today from this repository (`npm install && npm run build`). The remaining API surface is the v1 design target; npm publication arrives with v1.0.
 
 ### Library
 
@@ -129,7 +129,7 @@ npx ascrap eval   # reproduce the benchmark table on the 50-site corpus
 | Phase | Scope | Status |
 | --- | --- | --- |
 | **Blueprint** | Market & competitor research, architecture, API design, 6-week roadmap | ✅ Complete — see [`docs/BLUEPRINT.md`](./docs/BLUEPRINT.md) |
-| **v1.0** | Tier 1–3 fetching, Markdown + fit mode with token reporting, Zod extraction, MCP server (5 tools), CLI, SQLite cache, 50-site eval harness, 3 Indonesian recipes, one-command Docker | 🔜 Next |
+| **v1.0** | Tier 1–3 fetching, Markdown + fit mode with token reporting, Zod extraction, MCP server (5 tools), CLI, SQLite cache, 50-site eval harness, 3 Indonesian recipes, one-command Docker | 🚧 In progress — Week 1 scaffold landed |
 | **v1.5** | Code-gen extraction cache, `watch` with semantic diffs, authenticated REST API, LangChain.js / LlamaIndex wrappers, more ID recipes | Planned |
 | **v2.0** | Only if real usage appears: hosted demo, community recipes, thin Python SDK over MCP/REST | Exploratory |
 

@@ -28,14 +28,13 @@ Recipes requiring login, CAPTCHA handling, or paywall access will be declined.
 
 ## Development
 
-> Tooling commands below become available as the v1 scaffold lands; until then, contributions are primarily to documentation, fixtures, the eval corpus, and the blueprint.
+The monorepo uses npm workspaces (see `docs/adr/ADR-008-npm-workspaces.md`). From the repository root:
 
 ```bash
-# (v1 scaffold — planned)
-pnpm install
-pnpm test          # unit + fixture (golden) tests
-pnpm eval          # 50-site evaluation harness
-pnpm lint
+npm install        # install all workspace dependencies
+npm run build      # tsc -b across packages (schema → core → cli, mcp)
+npm test           # build + vitest (unit + fixture/golden tests in @ascrap/core)
+node packages/cli/dist/index.js scrape https://example.com   # try the CLI
 ```
 
 ## Pull requests

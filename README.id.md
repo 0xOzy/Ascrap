@@ -7,7 +7,7 @@
 **Framework web scraping untuk AI agent yang MCP-native dan TypeScript-first — Markdown bersih hemat token dan JSON valid terhadap skema dari URL apa pun. Local-first. Tanpa API key.**
 
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
-[![Status: Blueprint](https://img.shields.io/badge/Status-Blueprint%20%2F%20Pra--v1-orange.svg)](./docs/BLUEPRINT.md)
+[![Status: v1 dikerjakan](https://img.shields.io/badge/Status-v1%20Sedang%20Dikerjakan-orange.svg)](./docs/BLUEPRINT.md)
 [![MCP Native](https://img.shields.io/badge/MCP-Native-purple.svg)](#-mcp-server)
 [![TypeScript First](https://img.shields.io/badge/TypeScript-First-3178C6.svg)](#-rencana-penggunaan-v1)
 
@@ -61,7 +61,7 @@ HTML mentah artikel pada umumnya ~17 rb token. Sebuah reader membawanya ke ~4,7�
 
 ## Rencana penggunaan (v1)
 
-> **Status:** Ascrap saat ini berada pada **tahap blueprint** — desain di [`docs/BLUEPRINT.md`](./docs/BLUEPRINT.md) sudah lengkap dan implementasi (v1) adalah langkah berikutnya. API di bawah ini adalah target desain v1, belum diterbitkan ke npm.
+> **Status:** Implementasi v1 **sedang berjalan — scaffold Minggu 1 sudah jadi**: monorepo, paket skema Zod, fetching Tier 1 + ekstraksi Readability, dan CLI `ascrap scrape` di bawah ini semuanya sudah bisa dijalankan dari repo ini (`npm install && npm run build`). Sisa permukaan API adalah target desain v1; publikasi npm tiba bersama v1.0.
 
 ### Library
 
@@ -129,7 +129,7 @@ npx ascrap eval   # reproduksi tabel benchmark pada korpus 50 situs
 | Fase | Ruang lingkup | Status |
 | --- | --- | --- |
 | **Blueprint** | Riset pasar & kompetitor, arsitektur, desain API, roadmap 6 minggu | ✅ Selesai — lihat [`docs/BLUEPRINT.md`](./docs/BLUEPRINT.md) |
-| **v1.0** | Fetching Tier 1–3, Markdown + mode fit dengan laporan token, ekstraksi Zod, MCP server (5 tool), CLI, cache SQLite, harness eval 50 situs, 3 resep Indonesia, Docker satu perintah | 🔜 Berikutnya |
+| **v1.0** | Fetching Tier 1–3, Markdown + mode fit dengan laporan token, ekstraksi Zod, MCP server (5 tool), CLI, cache SQLite, harness eval 50 situs, 3 resep Indonesia, Docker satu perintah | 🚧 Berjalan — scaffold Minggu 1 selesai |
 | **v1.5** | Cache ekstraksi code-gen, `watch` dengan diff semantik, REST API terautentikasi, wrapper LangChain.js / LlamaIndex, lebih banyak resep ID | Direncanakan |
 | **v2.0** | Hanya jika usage nyata muncul: demo hosted, resep komunitas, SDK Python tipis di atas MCP/REST | Eksploratif |
 
