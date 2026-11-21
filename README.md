@@ -154,6 +154,6 @@ Apache-2.0 was chosen deliberately: a patent grant and commercial-embedding frie
 
 <div align="center">
 
-Built by [Muhammad (@0xOzy)](https://github.com/0xOzy) · Blueprint v1.0 — 21 November 2026
+Built by [@0xOzy](https://github.com/0xOzy) · Blueprint v1.0 — 21 November 2026
 
 </div>

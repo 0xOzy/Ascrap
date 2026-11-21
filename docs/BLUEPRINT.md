@@ -3,7 +3,7 @@
 
 > **Dokumen:** Blueprint Produk & Teknis — Versi 1.0
 > **Tanggal:** 21 November 2026
-> **Pemilik Proyek:** Muhammad — GitHub [@0xOzy](https://github.com/0xOzy)
+> **Pemilik Proyek:** [@0xOzy](https://github.com/0xOzy)
 > **Status:** Riset selesai, siap masuk fase pembangunan v1
 > **Lisensi yang Direkomendasikan:** Apache-2.0
 > **Stack Utama:** TypeScript-first, MCP-native, Local-first
