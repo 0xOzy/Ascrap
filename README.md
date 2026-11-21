@@ -15,6 +15,8 @@
 
 </div>
 
+> **Language:** **English** | [Bahasa Indonesia](./README.id.md)
+
 ---
 
 ## Why Ascrap?
@@ -135,7 +137,7 @@ Explicitly **out of scope**: proxy/IP provisioning, CAPTCHA solving, login or pa
 
 ## Documentation
 
-- 📐 **[Full Blueprint](./docs/BLUEPRINT.md)** — research, competitor landscape, architecture, ADRs, eval design, legal & ethics posture, and the week-by-week v1 roadmap
+- 📐 **[Full Blueprint](./docs/BLUEPRINT.en.md)** — research, competitor landscape, architecture, ADRs, eval design, legal & ethics posture, and the week-by-week v1 roadmap ([versi Bahasa Indonesia](./docs/BLUEPRINT.md))
 - 🤝 **[ETHICS.md](./ETHICS.md)** — polite-by-default rules every recipe and contribution must follow
 - 🛠 **[CONTRIBUTING.md](./CONTRIBUTING.md)** — how to contribute, including the recipe red lines
 - 📋 **[CHANGELOG.md](./CHANGELOG.md)** — version history (SemVer from day one)

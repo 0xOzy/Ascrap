@@ -7,6 +7,8 @@
 > **Status:** Riset selesai, siap masuk fase pembangunan v1
 > **Lisensi yang Direkomendasikan:** Apache-2.0
 > **Stack Utama:** TypeScript-first, MCP-native, Local-first
+>
+> **Bahasa:** **Bahasa Indonesia** | [English](./BLUEPRINT.en.md)
 
 ---
 
