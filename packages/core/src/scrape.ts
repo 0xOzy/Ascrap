@@ -5,8 +5,12 @@ import {
 } from "@ascrap/schema";
 import { AscrapError } from "./errors.js";
 import { extractFromHtml } from "./extract.js";
+import { applyFit } from "./fit.js";
 import { checkRobots } from "./robots.js";
 import { countTokens } from "./tokens.js";
+
+/** Default token budget when `fit` is on but no explicit cap was given. */
+const DEFAULT_FIT_BUDGET = 4_000;
 
 /** Literal private / loopback / link-local hosts are never fetched (SSRF guard). */
 function assertPublicUrl(url: URL): void {
@@ -49,10 +53,11 @@ function truncateToTokens(
 /**
  * Scrape one URL into clean, token-reported Markdown.
  *
- * Week 1 implements Tier 1 (HTTP fetch) + Tier 2 (Readability extraction)
- * of the blueprint's tiered waterfall. The browser tiers land in Week 3;
- * a page that needs JavaScript today fails with `empty_content` or
- * `blocked`, reported honestly rather than escalated silently.
+ * Implements Tier 1 (HTTP fetch) + Tier 2 (Readability extraction) of the
+ * blueprint's tiered waterfall, plus Week 2's query-focused `fit` pruning.
+ * The browser tiers land in Week 3; a page that needs JavaScript today
+ * fails with `empty_content` or `blocked`, reported honestly rather than
+ * escalated silently.
  */
 export async function scrape(
   rawUrl: string,
@@ -136,7 +141,13 @@ export async function scrape(
 
   let markdown = extraction.markdown;
   let truncated = false;
-  if (opts.maxTokens !== undefined) {
+  let fitApplied = false;
+  if (opts.fit && opts.query) {
+    const fitted = applyFit(markdown, opts.query, opts.maxTokens ?? DEFAULT_FIT_BUDGET);
+    markdown = fitted.markdown;
+    fitApplied = true;
+    truncated = fitted.pruned;
+  } else if (opts.maxTokens !== undefined) {
     const capped = truncateToTokens(markdown, opts.maxTokens);
     markdown = capped.text;
     truncated = capped.truncated;
@@ -160,6 +171,7 @@ export async function scrape(
       ms: Math.round(performance.now() - started),
       cached: false,
       truncated,
+      fitApplied,
     },
     provenance: {
       url: url.toString(),

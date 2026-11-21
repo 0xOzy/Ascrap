@@ -61,7 +61,7 @@ Raw HTML for a typical article is ~17k tokens. A reader brings that to ~4.7–5.
 
 ## Planned usage (v1)
 
-> **Status:** v1 implementation is **in progress — the Week 1 scaffold has landed**: the monorepo, the Zod schema package, Tier 1 fetching + Readability extraction, and the `ascrap scrape` CLI below all run today from this repository (`npm install && npm run build`). The remaining API surface is the v1 design target; npm publication arrives with v1.0.
+> **Status:** v1 implementation is **in progress — Weeks 1–2 have landed**: the monorepo, Zod schema package, Tier 1 fetching + Readability extraction, the `ascrap scrape` CLI, query-focused `fit` pruning, and the Indonesian IDR & date parsers all run today from this repository (`npm install && npm run build`). The remaining API surface is the v1 design target; npm publication arrives with v1.0.
 
 ### Library
 
@@ -129,7 +129,7 @@ npx ascrap eval   # reproduce the benchmark table on the 50-site corpus
 | Phase | Scope | Status |
 | --- | --- | --- |
 | **Blueprint** | Market & competitor research, architecture, API design, 6-week roadmap | ✅ Complete — see [`docs/BLUEPRINT.md`](./docs/BLUEPRINT.md) |
-| **v1.0** | Tier 1–3 fetching, Markdown + fit mode with token reporting, Zod extraction, MCP server (5 tools), CLI, SQLite cache, 50-site eval harness, 3 Indonesian recipes, one-command Docker | 🚧 In progress — Week 1 scaffold landed |
+| **v1.0** | Tier 1–3 fetching, Markdown + fit mode with token reporting, Zod extraction, MCP server (5 tools), CLI, SQLite cache, 50-site eval harness, 3 Indonesian recipes, one-command Docker | 🚧 In progress — Weeks 1–2 landed (scaffold, fit mode, IDR & date parsers) |
 | **v1.5** | Code-gen extraction cache, `watch` with semantic diffs, authenticated REST API, LangChain.js / LlamaIndex wrappers, more ID recipes | Planned |
 | **v2.0** | Only if real usage appears: hosted demo, community recipes, thin Python SDK over MCP/REST | Exploratory |
 

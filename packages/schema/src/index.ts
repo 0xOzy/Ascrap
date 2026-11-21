@@ -25,13 +25,13 @@ export type AscrapErrorCode = z.infer<typeof AscrapErrorCodeSchema>;
 /** Options accepted by `scrape()`. */
 export const ScrapeOptionsSchema = z.object({
   /**
-   * Hard token cap for the returned Markdown. In Week 1 this truncates at a
-   * paragraph boundary; query-focused `fit` pruning lands in Week 2.
+   * Hard token cap for the returned Markdown. Without `fit`, this truncates
+   * at a paragraph boundary; with `fit`, it is the pruning budget.
    */
   maxTokens: z.number().int().positive().optional(),
-  /** Focus query for `fit` mode (Week 2). Accepted now for forward compatibility. */
+  /** Focus query for `fit` mode: blocks are scored against its terms. */
   query: z.string().min(1).optional(),
-  /** Enable `fit` (query-focused) pruning. Week 2. */
+  /** Enable `fit` (query-focused) pruning. Requires `query` to take effect. */
   fit: z.boolean().default(false),
   /** Respect robots.txt (default: true — polite by default). */
   respectRobots: z.boolean().default(true),
@@ -63,6 +63,8 @@ export const ScrapeMetaSchema = z.object({
   cached: z.boolean(),
   /** Whether `maxTokens` truncated the Markdown. */
   truncated: z.boolean(),
+  /** Whether query-focused `fit` pruning was applied to the Markdown. */
+  fitApplied: z.boolean(),
 });
 export type ScrapeMeta = z.infer<typeof ScrapeMetaSchema>;
 

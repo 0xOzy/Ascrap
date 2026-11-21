@@ -16,23 +16,25 @@ program
   .command("scrape")
   .description("Scrape one URL into clean, token-reported Markdown")
   .argument("<url>", "the URL to scrape")
-  .option("--max-tokens <n>", "hard token cap (paragraph-boundary truncation)", (v) =>
+  .option("--max-tokens <n>", "hard token cap / fit budget (paragraph-boundary truncation)", (v) =>
     Number.parseInt(v, 10),
   )
-  .option("--query <text>", "focus query (fit pruning lands in Week 2)")
+  .option("--query <text>", "focus query for --fit pruning")
+  .option("--fit", "prune the Markdown to the blocks most relevant to --query")
   .option("--out <file>", "write Markdown to a file instead of stdout")
   .option("--json", "print the full result object as JSON")
   .option("--no-robots", "skip the robots.txt check (explicit opt-out, logged)")
   .action(async (url: string, opts: Record<string, unknown>) => {
-    if (opts.query) {
-      console.error(
-        "note: --query is accepted, but query-focused fit pruning lands in Week 2.",
-      );
+    if (opts.fit && !opts.query) {
+      console.error("error [invalid_option]: --fit requires --query <text>.");
+      process.exitCode = 1;
+      return;
     }
     try {
       const result = await scrape(url, {
         maxTokens: opts.maxTokens as number | undefined,
         query: opts.query as string | undefined,
+        fit: opts.fit === true,
         respectRobots: opts.robots !== false,
       });
 
@@ -52,7 +54,8 @@ program
         `\n— ${result.status} · tier ${m.tier} · ${m.extractorUsed} · ` +
           `${m.tokens} tokens (raw HTML: ${m.tokensRawHtml}, saved: ${m.tokensSavedVsHtml}) · ` +
           `${m.ms} ms · robots: ${result.provenance.robots}` +
-          (m.truncated ? " · truncated by --max-tokens" : "") +
+          (m.fitApplied ? " · fit applied" : "") +
+          (m.truncated ? " · content pruned/truncated" : "") +
           (opts.out ? ` · written to ${opts.out as string}` : ""),
       );
     } catch (err) {

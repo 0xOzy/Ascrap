@@ -18,6 +18,7 @@ describe("ScrapeResultSchema (contract)", () => {
         ms: 120,
         cached: false,
         truncated: false,
+        fitApplied: false,
       },
       provenance: {
         url: "https://example.co.id/artikel",
@@ -47,6 +48,7 @@ describe("ScrapeResultSchema (contract)", () => {
           ms: 1,
           cached: false,
           truncated: false,
+          fitApplied: false,
         },
         provenance: {
           url: "https://example.co.id/artikel",

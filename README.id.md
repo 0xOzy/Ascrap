@@ -61,7 +61,7 @@ HTML mentah artikel pada umumnya ~17 rb token. Sebuah reader membawanya ke ~4,7�
 
 ## Rencana penggunaan (v1)
 
-> **Status:** Implementasi v1 **sedang berjalan — scaffold Minggu 1 sudah jadi**: monorepo, paket skema Zod, fetching Tier 1 + ekstraksi Readability, dan CLI `ascrap scrape` di bawah ini semuanya sudah bisa dijalankan dari repo ini (`npm install && npm run build`). Sisa permukaan API adalah target desain v1; publikasi npm tiba bersama v1.0.
+> **Status:** Implementasi v1 **sedang berjalan — Minggu 1–2 sudah jadi**: monorepo, paket skema Zod, fetching Tier 1 + ekstraksi Readability, CLI `ascrap scrape`, pruning `fit` terfokus query, serta parser IDR & tanggal Bahasa Indonesia semuanya sudah bisa dijalankan dari repo ini (`npm install && npm run build`). Sisa permukaan API adalah target desain v1; publikasi npm tiba bersama v1.0.
 
 ### Library
 
@@ -129,7 +129,7 @@ npx ascrap eval   # reproduksi tabel benchmark pada korpus 50 situs
 | Fase | Ruang lingkup | Status |
 | --- | --- | --- |
 | **Blueprint** | Riset pasar & kompetitor, arsitektur, desain API, roadmap 6 minggu | ✅ Selesai — lihat [`docs/BLUEPRINT.md`](./docs/BLUEPRINT.md) |
-| **v1.0** | Fetching Tier 1–3, Markdown + mode fit dengan laporan token, ekstraksi Zod, MCP server (5 tool), CLI, cache SQLite, harness eval 50 situs, 3 resep Indonesia, Docker satu perintah | 🚧 Berjalan — scaffold Minggu 1 selesai |
+| **v1.0** | Fetching Tier 1–3, Markdown + mode fit dengan laporan token, ekstraksi Zod, MCP server (5 tool), CLI, cache SQLite, harness eval 50 situs, 3 resep Indonesia, Docker satu perintah | 🚧 Berjalan — Minggu 1–2 selesai (scaffold, mode fit, parser IDR & tanggal) |
 | **v1.5** | Cache ekstraksi code-gen, `watch` dengan diff semantik, REST API terautentikasi, wrapper LangChain.js / LlamaIndex, lebih banyak resep ID | Direncanakan |
 | **v2.0** | Hanya jika usage nyata muncul: demo hosted, resep komunitas, SDK Python tipis di atas MCP/REST | Eksploratif |
 

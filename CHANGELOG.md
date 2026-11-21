@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Week 2 (fit mode & Indonesian locale utilities)
+
+- `fit` mode: deterministic query-focused pruning of extracted Markdown — blocks scored by query-term hits (heading hits weigh 3×), title block and section headings always kept for context, token budget respected (`scrape(url, { fit: true, query, maxTokens })`, CLI `--fit --query`); result meta now reports `fitApplied`
+- IDR parser (`parseIdr`, `findIdrAmounts`): correct Indonesian formatting — `Rp 1.250.000` → `1250000`, decimal commas, and magnitude words (`850 ribu`, `1,25 juta`, `2,5 miliar`)
+- Bahasa Indonesia date parser (`parseIndonesianDate`): named months full and abbreviated (`21 November 2026`, `3 Agu 2026`) and day-first numeric dates, returned as ISO `YYYY-MM-DD`, with impossible dates rejected
+- 16 new tests (fit, IDR, dates) — 26 passing in total
+
 ### Added — Week 1 scaffold (v1 implementation started)
 
 - TypeScript monorepo (npm workspaces + project references): `@ascrap/schema`, `@ascrap/core`, `ascrap` (CLI), `@ascrap/mcp` (placeholder, Week 5) — see `docs/adr/ADR-008-npm-workspaces.md`
@@ -18,13 +25,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Planned — v1.0.0
 
 - Tiered fetching, remaining tiers: Tier 0 (site APIs / JSON-LD / sitemap) and Tier 3 (Playwright fallback); TLS impersonation
-- `fit` (query-focused) output mode
 - Structured extraction with Zod schemas (LLM rung, provider-agnostic, including local models via Ollama)
 - MCP server with 5 tools: `scrape`, `extract`, `crawl`, `map`, `watch`
 - CLI: `crawl`, `extract`, `eval` commands (`scrape` landed in the Week 1 scaffold)
 - SQLite content cache with `maxAge` / ETag support
 - 50-site evaluation harness with reproducible benchmark reporting
-- Indonesian recipe pack (3 recipes) with built-in IDR and Bahasa Indonesia date parsers
+- Indonesian recipe pack (3 recipes) — the built-in IDR and Bahasa Indonesia date parsers landed in Week 2
 - One-command Docker run with the complete core feature set
 
 ## [0.1.0] — 2026-11-21
