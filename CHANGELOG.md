@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Week 4 (structured extraction & code-gen recipes)
+
+- `extract(url, schema, { llm })`: structured extraction validated against the user's Zod schema, with one automatic repair retry on validation failure and structured `extraction_failed` / `llm_unavailable` errors
+- LLM rung behind a one-method `LlmProvider` interface — `OllamaProvider` (local, key-free, the default), `OpenAiCompatibleProvider` (any OpenAI-compatible endpoint), `MockLlmProvider` (deterministic, for tests) — no vendor SDKs
+- **Code-gen extractor cache**: the LLM also returns a CSS selector per field; selectors are sanitized against the real DOM and stored per origin + schema hash in SQLite. Repeat extractions run deterministically at zero LLM cost (`meta.method: "codegen"`) until a recipe stops validating, then the LLM re-teaches it
+- Recipe application coerces values by field kind, reusing the Week 2 parsers: IDR amounts (`Rp 1.250.000` → `1250000`) and bilingual availability text ("Tersedia", "In stock", "Out of stock", "Stok Habis")
+- CLI: `ascrap extract <url> --schema-json <file>` (JSON Schema in, no TypeScript needed) with `--provider ollama|openai`, `--model`, and `--extractor-cache`
+- Zod utilities: schema description for prompts, field-kind inspection, JSON Schema → Zod conversion
+- 8 new tests (LLM rung, repair retry, code-gen rung, coercion, schema utilities) — 50 passing in total
+
 ### Added — Week 3 (browser fallback, crawl, cache)
 
 - Tier 0 (light): a full article body embedded in JSON-LD is preferred over DOM scraping (`extractorUsed: "json-ld"`, `meta.tier: 0`)
@@ -34,9 +44,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Planned — v1.0.0
 
 - Tiered fetching, remaining work: Tier 0 site APIs / RSS / sitemap inputs and TLS impersonation (JSON-LD and the Tier 3 Playwright fallback landed in Week 3)
-- Structured extraction with Zod schemas (LLM rung, provider-agnostic, including local models via Ollama)
 - MCP server with 5 tools: `scrape`, `extract`, `crawl`, `map`, `watch`
-- CLI: `extract`, `eval` commands (`scrape` landed in Week 1, `crawl` in Week 3)
+- CLI: `eval` command (`scrape` landed in Week 1, `crawl` in Week 3, `extract` in Week 4)
 - 50-site evaluation harness with reproducible benchmark reporting
 - Indonesian recipe pack (3 recipes) — the built-in IDR and Bahasa Indonesia date parsers landed in Week 2
 - One-command Docker run with the complete core feature set

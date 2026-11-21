@@ -19,6 +19,8 @@ export const AscrapErrorCodeSchema = z.enum([
   "unsupported_content_type",
   "invalid_url",
   "ssrf_blocked",
+  "extraction_failed",
+  "llm_unavailable",
 ]);
 export type AscrapErrorCode = z.infer<typeof AscrapErrorCodeSchema>;
 
@@ -133,3 +135,16 @@ export const CrawlResultSchema = z.object({
   ms: z.number().nonnegative(),
 });
 export type CrawlResult = z.infer<typeof CrawlResultSchema>;
+
+/** Report attached to every structured-extraction result. */
+export const ExtractMetaSchema = z.object({
+  /** How the data was produced: an LLM call, or a cached deterministic extractor. */
+  method: z.enum(["llm", "codegen"]),
+  /** LLM provider name when `method` is "llm"; otherwise null. */
+  provider: z.string().nullable(),
+  /** Whether a stored code-gen recipe existed for this origin + schema. */
+  recipeCached: z.boolean(),
+  /** Wall-clock time for the extraction step, in milliseconds. */
+  ms: z.number().nonnegative(),
+});
+export type ExtractMeta = z.infer<typeof ExtractMetaSchema>;

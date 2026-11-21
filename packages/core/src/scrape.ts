@@ -57,6 +57,8 @@ export interface ScrapePage {
   result: ScrapeResult;
   /** Absolute links found in the fetched document (empty for cache hits). */
   links: string[];
+  /** The document HTML the result was extracted from (empty for cache hits). */
+  html: string;
 }
 
 /**
@@ -99,6 +101,7 @@ export async function scrapePage(
           },
         },
         links: [],
+        html: "",
       };
     }
 
@@ -147,6 +150,7 @@ export async function scrapePage(
           },
         },
         links: [],
+        html: "",
       };
     }
     if (res.status === 404 || res.status === 410) {
@@ -255,7 +259,7 @@ export async function scrapePage(
     };
 
     cache?.set(cacheKey, result, res.headers.get("etag"));
-    return { result, links };
+    return { result, links, html };
   } finally {
     cache?.close();
   }

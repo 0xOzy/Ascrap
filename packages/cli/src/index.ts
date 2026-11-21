@@ -1,8 +1,18 @@
 #!/usr/bin/env node
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { Command } from "commander";
-import { AscrapError, crawl, scrape } from "@ascrap/core";
+import type { ZodObject, ZodRawShape } from "zod";
+import {
+  AscrapError,
+  OllamaProvider,
+  OpenAiCompatibleProvider,
+  crawl,
+  extract,
+  jsonSchemaToZod,
+  scrape,
+  type LlmProvider,
+} from "@ascrap/core";
 
 const program = new Command();
 
@@ -153,6 +163,65 @@ program
           (opts.out ? ` · written to ${opts.out as string}` : ""),
       );
       if (result.pages.length === 0) process.exitCode = 1;
+    } catch (err) {
+      if (err instanceof AscrapError) {
+        console.error(`error [${err.code}]: ${err.message}`);
+        process.exitCode = 1;
+        return;
+      }
+      throw err;
+    }
+  });
+
+program
+  .command("extract")
+  .description("Extract schema-valid structured data from one URL")
+  .argument("<url>", "the URL to extract from")
+  .requiredOption("--schema-json <file>", "JSON Schema file describing the data to extract")
+  .option("--provider <name>", "LLM provider for the first run: ollama | openai", "ollama")
+  .option("--model <name>", "provider model name")
+  .option("--base-url <url>", "provider base URL override")
+  .option(
+    "--extractor-cache <file>",
+    "SQLite file for code-gen recipes (repeat runs need no LLM)",
+    "ascrap-extractors.db",
+  )
+  .option("--cache <file>", "SQLite scrape cache file")
+  .option("--no-robots", "skip the robots.txt check (explicit opt-out, logged)")
+  .option("--no-browser", "disable the Tier 3 browser fallback")
+  .action(async (url: string, opts: Record<string, unknown>) => {
+    try {
+      const schemaJson = JSON.parse(
+        await readFile(opts.schemaJson as string, "utf8"),
+      ) as Record<string, unknown>;
+      const schema = jsonSchemaToZod(schemaJson) as ZodObject<ZodRawShape>;
+
+      let llm: LlmProvider;
+      if (opts.provider === "openai") {
+        llm = new OpenAiCompatibleProvider(
+          (opts.model as string) ?? "gpt-4o-mini",
+          (opts.baseUrl as string) ?? undefined,
+        );
+      } else {
+        llm = new OllamaProvider(
+          (opts.model as string) ?? "llama3.1",
+          (opts.baseUrl as string) ?? undefined,
+        );
+      }
+
+      const result = await extract(url, schema, {
+        llm,
+        extractorCachePath: opts.extractorCache as string,
+        cachePath: opts.cache as string | undefined,
+        respectRobots: opts.robots !== false,
+        browserFallback: opts.browser !== false,
+      });
+
+      console.log(JSON.stringify(result.data, null, 2));
+      const m = result.meta;
+      console.error(
+        `\n— method: ${m.method}${m.provider ? ` (${m.provider})` : ""} · recipe cached: ${m.recipeCached} · ${m.ms} ms · page: ${result.scrape.meta.tokens} tokens (tier ${result.scrape.meta.tier})`,
+      );
     } catch (err) {
       if (err instanceof AscrapError) {
         console.error(`error [${err.code}]: ${err.message}`);
