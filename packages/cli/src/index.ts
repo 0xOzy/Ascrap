@@ -194,6 +194,12 @@ program
       const schemaJson = JSON.parse(
         await readFile(opts.schemaJson as string, "utf8"),
       ) as Record<string, unknown>;
+      if (!schemaJson || typeof schemaJson !== "object" || schemaJson.type !== "object") {
+        throw new AscrapError(
+          "invalid_schema",
+          '--schema-json must describe an object: {"type":"object","properties":{...},"required":[...]}',
+        );
+      }
       const schema = jsonSchemaToZod(schemaJson) as ZodObject<ZodRawShape>;
 
       let llm: LlmProvider;

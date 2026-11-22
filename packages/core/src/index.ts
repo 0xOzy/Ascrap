@@ -27,6 +27,7 @@ export {
   extract,
   extractFromPage,
   applyRecipe,
+  buildHtmlInventory,
   schemaHash,
   RecipeStore,
   type ExtractOptions,

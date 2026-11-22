@@ -21,6 +21,7 @@ export const AscrapErrorCodeSchema = z.enum([
   "ssrf_blocked",
   "extraction_failed",
   "llm_unavailable",
+  "invalid_schema",
 ]);
 export type AscrapErrorCode = z.infer<typeof AscrapErrorCodeSchema>;
 

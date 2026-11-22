@@ -171,13 +171,82 @@ function parseJsonResponse(text: string): Record<string, unknown> {
 }
 
 const MAX_PROMPT_MARKDOWN_CHARS = 24_000;
+const MAX_INVENTORY_ENTRIES = 60;
+const MAX_INVENTORY_CHARS = 6_000;
+
+/**
+ * A compact inventory of the elements that actually exist in the page HTML:
+ * one `selector — "sample text"` line per distinctive element, preferring
+ * elements with an id or classes and short visible text. The teaching prompt
+ * includes this because an LLM that only sees Markdown has to guess CSS
+ * selectors blind — and blind guesses almost never match real class names.
+ * With the inventory, the model picks from selectors that verifiably exist.
+ */
+export function buildHtmlInventory(html: string, url: string): string {
+  if (!html) return "";
+  const dom = new JSDOM(html, { url });
+  const { document } = dom.window;
+  const skipTags = new Set([
+    "SCRIPT",
+    "STYLE",
+    "NOSCRIPT",
+    "SVG",
+    "PATH",
+    "BR",
+    "HR",
+    "META",
+    "LINK",
+    "INPUT",
+    "TEXTAREA",
+    "SELECT",
+    "OPTION",
+    "IMG",
+    "IFRAME",
+    "VIDEO",
+    "AUDIO",
+    "CANVAS",
+  ]);
+  const lines: string[] = [];
+  const seen = new Set<string>();
+  for (const el of document.querySelectorAll("*")) {
+    if (lines.join("\n").length > MAX_INVENTORY_CHARS) break;
+    if (lines.length >= MAX_INVENTORY_ENTRIES) break;
+    if (skipTags.has(el.tagName)) continue;
+    // Leaf-ish elements only: no element children, or one short text run.
+    const text = (el.textContent ?? "").replace(/\s+/g, " ").trim();
+    if (!text || text.length > 80) continue;
+    if (el.children.length > 0 && el.querySelector("*") !== null && text.length > 40) {
+      continue;
+    }
+    const tag = el.tagName.toLowerCase();
+    const id = el.getAttribute("id");
+    const classes = (el.getAttribute("class") ?? "")
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 3);
+    // Elements with an id or classes make stable selectors; bare tags are
+    // only worth listing for headings and other unique landmarks.
+    const landmark = ["h1", "h2", "title"].includes(tag);
+    if (!id && classes.length === 0 && !landmark) continue;
+    const selector = id
+      ? `#${id}`
+      : `${tag}${classes.map((c) => `.${c}`).join("")}`;
+    if (seen.has(selector)) continue;
+    seen.add(selector);
+    lines.push(`${selector} — "${text.slice(0, 60)}"`);
+  }
+  return lines.join("\n");
+}
 
 function buildPrompt(
   markdown: string,
   schema: ZodObject<ZodRawShape>,
+  html: string,
+  url: string,
 ): string {
   const schemaJson = JSON.stringify(describeZodSchema(schema), null, 2);
-  return [
+  const inventory = buildHtmlInventory(html, url);
+  const parts = [
     "You extract structured data from a web page's Markdown.",
     "",
     "Return ONLY a JSON object with two keys:",
@@ -189,7 +258,17 @@ function buildPrompt(
     "",
     "Page Markdown:",
     markdown.slice(0, MAX_PROMPT_MARKDOWN_CHARS),
-  ].join("\n");
+  ];
+  if (inventory) {
+    parts.push(
+      "",
+      "Page HTML inventory (selector — sample text). These are elements that verifiably exist in the page HTML:",
+      inventory,
+      "",
+      'Choose every "selectors" value from this inventory, exactly as written. Do not invent selectors that are not listed.',
+    );
+  }
+  return parts.join("\n");
 }
 
 export interface ExtractOptions extends ScrapeOptions {
@@ -256,7 +335,7 @@ export async function extractFromPage<T extends ZodRawShape>(
       );
     }
 
-    const prompt = buildPrompt(page.result.markdown, schema);
+    const prompt = buildPrompt(page.result.markdown, schema, page.html, url);
     let lastError = "";
     for (let attempt = 0; attempt < 2; attempt++) {
       const fullPrompt =

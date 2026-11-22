@@ -9,9 +9,11 @@ import type { ScrapePage } from "../src/scrape.js";
 import {
   RecipeStore,
   applyRecipe,
+  buildHtmlInventory,
   extractFromPage,
   schemaHash,
 } from "../src/structured.js";
+import { AscrapError } from "../src/errors.js";
 import { describeZodSchema, jsonSchemaToZod } from "../src/zod-utils.js";
 
 const PRODUCT_HTML = `<!doctype html><html><head><title>Produk</title></head><body>
@@ -214,5 +216,45 @@ describe("zod utilities", () => {
       priceIdr: 1000,
     });
     expect(() => built.parse({ name: "Kopi", priceIdr: "1000" })).toThrow();
+  });
+
+  it("rejects shorthand / malformed JSON Schema loudly (invalid_schema)", () => {
+    const shorthand = { title: "string", price: "number" };
+    try {
+      jsonSchemaToZod(shorthand);
+      expect.unreachable("shorthand schema must throw");
+    } catch (err) {
+      expect(err).toBeInstanceOf(AscrapError);
+      expect((err as AscrapError).code).toBe("invalid_schema");
+    }
+    expect(() =>
+      jsonSchemaToZod({
+        type: "object",
+        properties: { price: "number" },
+      }),
+    ).toThrow(/properties\.price/);
+    expect(() => jsonSchemaToZod({ type: "str" })).toThrow(/invalid_schema|type/);
+    // Enum schemas remain legal without a "type" sibling requirement.
+    const enumBuilt = jsonSchemaToZod({ enum: ["a", "b"] });
+    expect(enumBuilt.parse("a")).toBe("a");
+  });
+
+  it("builds an HTML inventory of verifiable selectors with sample text", () => {
+    const inventory = buildHtmlInventory(
+      PRODUCT_HTML,
+      "https://example.co.id/produk/1",
+    );
+    expect(inventory).toContain("span.price");
+    expect(inventory).toContain("Rp 1.250.000");
+    expect(inventory).toContain("h1.product-name");
+    expect(buildHtmlInventory("", "https://example.co.id")).toBe("");
+  });
+
+  it("teaching prompt includes the HTML inventory and demands its selectors", async () => {
+    const llm = new MockLlmProvider([LLM_REPLY]);
+    await extractFromPage(fakePage(), ProductSchema, { llm });
+    expect(llm.prompts[0]).toContain("Page HTML inventory");
+    expect(llm.prompts[0]).toContain("span.price");
+    expect(llm.prompts[0]).toContain("Do not invent selectors");
   });
 });

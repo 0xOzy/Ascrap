@@ -19,12 +19,21 @@ function assertOk(res: Response, provider: string): void {
   }
 }
 
+function isTimeout(cause: unknown): boolean {
+  return (
+    cause instanceof Error &&
+    (cause.name === "TimeoutError" || cause.name === "AbortError")
+  );
+}
+
 /** Local models via Ollama — the default, key-free provider. */
 export class OllamaProvider implements LlmProvider {
   readonly name = "ollama";
   constructor(
     private readonly model: string = "llama3.1",
     private readonly baseUrl: string = "http://localhost:11434",
+    /** Local models on modest hardware are slow; 300s avoids false "unreachable" errors. */
+    private readonly timeoutMs: number = 300_000,
   ) {}
 
   async complete(prompt: string): Promise<string> {
@@ -39,9 +48,15 @@ export class OllamaProvider implements LlmProvider {
           stream: false,
           format: "json",
         }),
-        signal: AbortSignal.timeout(120_000),
+        signal: AbortSignal.timeout(this.timeoutMs),
       });
     } catch (cause) {
+      if (isTimeout(cause)) {
+        throw new AscrapError(
+          "llm_unavailable",
+          `Ollama at ${this.baseUrl} timed out after ${Math.round(this.timeoutMs / 1000)}s — the model is reachable but slow (large prompt, cold start, or a busy machine).`,
+        );
+      }
       throw new AscrapError(
         "llm_unavailable",
         `Ollama is not reachable at ${this.baseUrl} — is it running? (${(cause as Error).message})`,
@@ -61,6 +76,7 @@ export class OpenAiCompatibleProvider implements LlmProvider {
     private readonly baseUrl: string = "https://api.openai.com/v1",
     private readonly apiKey: string | undefined = process.env.OPENAI_API_KEY,
     name = "openai-compatible",
+    private readonly timeoutMs: number = 120_000,
   ) {
     this.name = name;
   }
@@ -79,9 +95,15 @@ export class OpenAiCompatibleProvider implements LlmProvider {
           messages: [{ role: "user", content: prompt }],
           response_format: { type: "json_object" },
         }),
-        signal: AbortSignal.timeout(120_000),
+        signal: AbortSignal.timeout(this.timeoutMs),
       });
     } catch (cause) {
+      if (isTimeout(cause)) {
+        throw new AscrapError(
+          "llm_unavailable",
+          `${this.name} timed out after ${Math.round(this.timeoutMs / 1000)}s.`,
+        );
+      }
       throw new AscrapError(
         "llm_unavailable",
         `${this.name} request failed: ${(cause as Error).message}`,

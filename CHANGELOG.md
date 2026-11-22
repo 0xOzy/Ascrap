@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — post-Week 4 (found by the first real-LLM extract test, Ollama)
+
+- **Code-gen teaching prompt now includes an HTML inventory**: the prompt lists the elements that verifiably exist in the page (`selector — "sample text"`, built by the new `buildHtmlInventory`) and instructs the model to choose selectors only from it. Before this, the model saw only Markdown and had to guess CSS selectors blind — with a local 1.5B model it taught only `{title: "h1"}` and repeat runs fell back to the LLM. After the fix the same model teaches the complete recipe (`h1`, `p.price_color`, `p.instock.availability`) and run 2 is pure code-gen (137 ms vs 132 s). Note: a 0.5B model still invents plausible class names despite the inventory — data extraction works, but the teaching rung needs a model that can follow the inventory instruction
+- **`--schema-json` is validated strictly**: a malformed schema (e.g. the shorthand `{"title": "string"}` instead of real JSON Schema) previously degraded silently to `z.unknown()`, so any LLM output "validated". `jsonSchemaToZod` now throws a path-aware `invalid_schema` error (new error code) and the CLI rejects a non-object top level before any LLM call
+- **LLM timeout reporting**: `OllamaProvider`'s default timeout is 300s (local models on modest hardware are slow) and a timeout now reports "timed out" instead of the misleading "not reachable"; `OpenAiCompatibleProvider` distinguishes timeouts the same way (120s default, configurable on both)
+
 ### Added — Week 4 (structured extraction & code-gen recipes)
 
 - `extract(url, schema, { llm })`: structured extraction validated against the user's Zod schema, with one automatic repair retry on validation failure and structured `extraction_failed` / `llm_unavailable` errors

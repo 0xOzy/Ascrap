@@ -1,4 +1,5 @@
 import { z, type ZodObject, type ZodRawShape, type ZodTypeAny } from "zod";
+import { AscrapError } from "./errors.js";
 
 /**
  * Minimal Zod → JSON-Schema description, sufficient to brief an LLM and to
@@ -107,14 +108,47 @@ export function fieldKinds(
   return kinds;
 }
 
+const JSON_SCHEMA_TYPES = new Set([
+  "string",
+  "number",
+  "integer",
+  "boolean",
+  "array",
+  "object",
+]);
+
+function invalidSchema(path: string, detail: string): AscrapError {
+  return new AscrapError(
+    "invalid_schema",
+    `${path}: ${detail}. Expected a JSON Schema object such as ` +
+      `{"type":"object","properties":{"title":{"type":"string"}},"required":["title"]}.`,
+  );
+}
+
 /**
  * Build a Zod schema from a JSON Schema subset — this is what the CLI
  * accepts via `--schema-json`, so terminal users never write TypeScript.
+ *
+ * Strict on purpose: a node without a recognized `type` (e.g. the shorthand
+ * `{"title": "string"}`) throws `invalid_schema` instead of silently
+ * degrading to `z.unknown()`, which would let any LLM output "validate".
  */
-export function jsonSchemaToZod(json: Record<string, unknown>): ZodTypeAny {
+export function jsonSchemaToZod(
+  json: Record<string, unknown>,
+  path = "$",
+): ZodTypeAny {
+  if (!json || typeof json !== "object" || Array.isArray(json)) {
+    throw invalidSchema(path, "schema node is not an object");
+  }
   const enumValues = json.enum as string[] | undefined;
   if (enumValues && enumValues.length > 0) {
     return z.enum(enumValues as [string, ...string[]]);
+  }
+  if (typeof json.type !== "string" || !JSON_SCHEMA_TYPES.has(json.type)) {
+    throw invalidSchema(
+      path,
+      `missing or unknown "type" (${JSON.stringify(json.type ?? null)})`,
+    );
   }
   switch (json.type) {
     case "string":
@@ -126,22 +160,32 @@ export function jsonSchemaToZod(json: Record<string, unknown>): ZodTypeAny {
       return z.boolean();
     case "array": {
       const items = json.items as Record<string, unknown> | undefined;
-      return z.array(items ? jsonSchemaToZod(items) : z.unknown());
+      return z.array(
+        items ? jsonSchemaToZod(items, `${path}.items`) : z.unknown(),
+      );
     }
     case "object": {
-      const properties = (json.properties ?? {}) as Record<
-        string,
-        Record<string, unknown>
-      >;
+      const rawProperties = (json.properties ?? {}) as Record<string, unknown>;
+      if (
+        !rawProperties ||
+        typeof rawProperties !== "object" ||
+        Array.isArray(rawProperties)
+      ) {
+        throw invalidSchema(path, '"properties" is not an object');
+      }
       const required = new Set((json.required ?? []) as string[]);
       const shape: ZodRawShape = {};
-      for (const [key, propSchema] of Object.entries(properties)) {
-        const field = jsonSchemaToZod(propSchema);
+      for (const [key, propSchema] of Object.entries(rawProperties)) {
+        const field = jsonSchemaToZod(
+          propSchema as Record<string, unknown>,
+          `${path}.properties.${key}`,
+        );
         shape[key] = required.has(key) ? field : field.optional();
       }
       return z.object(shape);
     }
     default:
-      return z.unknown();
+      // Unreachable: the type set is checked above.
+      throw invalidSchema(path, `unsupported "type" ${JSON.stringify(json.type)}`);
   }
 }
